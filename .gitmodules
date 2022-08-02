@@ -1,0 +1,6 @@
+[submodule "worker"]
+	path = worker
+	url = https://github.com/ajuna-network/worker
+[submodule "node"]
+	path = node
+	url = https://github.com/ajuna-network/Ajuna
