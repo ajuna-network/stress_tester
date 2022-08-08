@@ -54,6 +54,10 @@ def get_base_cli_cmd(cli_exec, node_port=9944, worker_port=2011, websocket_ip='1
     return [cli_exec, '-p', str(node_port), '-P', str(worker_port), '-u', f'ws://{websocket_ip}', '-U', f'wss://{websocket_ip}']
 
 
+def get_trusted_cli_subcommand(call_signer, mrenclave, subcmd):
+    return ['trusted', '--xt-signer', call_signer, '--direct', '--mrenclave', mrenclave, subcmd]
+
+
 def generate_player_account(cli_cmd, account_name, balance, stdout_type):
     logging.debug(f'"{account_name}" Setting funds...')
     cmd = cli_cmd + [account_name, str(balance)]
@@ -96,8 +100,8 @@ def generate_player_accounts(cli_exec, mrenclave, player_count, ws_addr='127.0.0
 
     base_name = '//Account_'
 
-    cli_extrinsic = ['trusted', '--mrenclave',
-                     mrenclave, '--direct', 'set-balance']
+    cli_options = ['trusted', '--mrenclave',
+                   mrenclave, '--direct', '--xt-signer']
 
     logging.info(f'Creating {player_count} player accounts...')
 
@@ -106,9 +110,9 @@ def generate_player_accounts(cli_exec, mrenclave, player_count, ws_addr='127.0.0
     else:
         stdout_type = subprocess.DEVNULL
 
-    cli_cmd = get_base_cli_cmd(cli_exec) + cli_extrinsic
+    base_cli_cmd = get_base_cli_cmd(cli_exec)
 
-    account_names = [(cli_cmd, f'{base_name}{i}', balance, stdout_type)
+    account_names = [(base_cli_cmd + get_trusted_cli_subcommand(f'{base_name}{i}', mrenclave, 'set-balance'), f'{base_name}{i}', balance, stdout_type)
                      for i in range(0, player_count)]
 
     with Pool(4) as pool:
@@ -131,20 +135,26 @@ def generate_player_accounts(cli_exec, mrenclave, player_count, ws_addr='127.0.0
 
 
 def drop_bomb(cli_cmd, player, x, y, log_file):
-    cmd = cli_cmd + ['drop-bomb', player, x, y]
-    p = subprocess.run(cmd, stdout=log_file, stderr=subprocess.STDOUT, timeout=60.0)
+    cmd = cli_cmd + [player, x, y]
+    logging.debug(f'Running command: "{" ".join(cmd)}"')
+    p = subprocess.run(cmd, stdout=log_file,
+                       stderr=subprocess.STDOUT, timeout=60.0)
     p.check_returncode()
 
 
 def drop_stone(cli_cmd, player, direction, x, log_file):
-    cmd = cli_cmd + ['drop-stone', player, direction, x]
-    p = subprocess.run(cmd, stdout=log_file, stderr=subprocess.STDOUT, timeout=60.0)
+    cmd = cli_cmd + [player, direction, x]
+    logging.debug(f'Running command: "{" ".join(cmd)}"')
+    p = subprocess.run(cmd, stdout=log_file,
+                       stderr=subprocess.STDOUT, timeout=60.0)
     p.check_returncode()
 
 
 def check_board(cli_cmd, player, log_file):
-    cmd = cli_cmd + ['get-board', player]
-    p = subprocess.run(cmd, stdout=log_file, stderr=subprocess.STDOUT, timeout=60.0)
+    cmd = cli_cmd + [player]
+    logging.debug(f'Running command: "{" ".join(cmd)}"')
+    p = subprocess.run(cmd, stdout=log_file,
+                       stderr=subprocess.STDOUT, timeout=60.0)
     p.check_returncode()
 
 
@@ -152,8 +162,7 @@ def play_game(cli_exec, mrenclave, player_1, player_2):
     epoch = int(time.time())
     player_names = f'{player_1.replace("//", "")}-{player_2.replace("//", "")}'
 
-    base_cli_cmd = get_base_cli_cmd(cli_exec) + ['trusted', '--mrenclave',
-                                                 mrenclave, '--direct']
+    base_cli_cmd = get_base_cli_cmd(cli_exec)
 
     with open(f'game-logs/{epoch}-{player_names}-game.log', 'w+') as game_log_file:
         logging.info(
@@ -161,28 +170,36 @@ def play_game(cli_exec, mrenclave, player_1, player_2):
 
         try:
             # Place bombs for player one
-            drop_bomb(base_cli_cmd, player_1, '0', '0', game_log_file)
-            drop_bomb(base_cli_cmd, player_1, '0', '1', game_log_file)
-            drop_bomb(base_cli_cmd, player_1, '0', '2', game_log_file)
+            drop_bomb(base_cli_cmd + get_trusted_cli_subcommand(player_1, mrenclave, 'drop-bomb'),
+                      player_1, '0', '0', game_log_file)
+            drop_bomb(base_cli_cmd + get_trusted_cli_subcommand(player_1, mrenclave, 'drop-bomb'),
+                      player_1, '0', '1', game_log_file)
+            drop_bomb(base_cli_cmd + get_trusted_cli_subcommand(player_1, mrenclave, 'drop-bomb'),
+                      player_1, '0', '2', game_log_file)
 
             # Place bombs for player two
-            drop_bomb(base_cli_cmd, player_2, '0', '0', game_log_file)
-            drop_bomb(base_cli_cmd, player_2, '0', '1', game_log_file)
-            drop_bomb(base_cli_cmd, player_2, '0', '2', game_log_file)
+            drop_bomb(base_cli_cmd + get_trusted_cli_subcommand(player_2, mrenclave, 'drop-bomb'),
+                      player_2, '0', '0', game_log_file)
+            drop_bomb(base_cli_cmd + get_trusted_cli_subcommand(player_2, mrenclave, 'drop-bomb'),
+                      player_2, '0', '1', game_log_file)
+            drop_bomb(base_cli_cmd + get_trusted_cli_subcommand(player_2, mrenclave, 'drop-bomb'),
+                      player_2, '0', '2', game_log_file)
 
             # Play turn 1
-            drop_stone(base_cli_cmd, player_2, 'north', '0', game_log_file)
-            drop_stone(base_cli_cmd, player_1, 'north', '0', game_log_file)
+            drop_stone(base_cli_cmd + get_trusted_cli_subcommand(player_2, mrenclave, 'drop-stone'),
+                       player_2, 'north', '0', game_log_file)
+            drop_stone(base_cli_cmd + get_trusted_cli_subcommand(player_1, mrenclave, 'drop-stone'),
+                       player_1, 'north', '0', game_log_file)
 
             for i in range(2, 6):
                 # Play turn i
-                drop_stone(base_cli_cmd, player_2,
+                drop_stone(base_cli_cmd + get_trusted_cli_subcommand(player_2, mrenclave, 'drop-stone'), player_2,
                            'west', '2', game_log_file)
-                drop_stone(base_cli_cmd, player_1,
+                drop_stone(base_cli_cmd + get_trusted_cli_subcommand(player_1, mrenclave, 'drop-stone'), player_1,
                            'north', '2', game_log_file)
 
             # Game finished check the board for results
-            check_board(base_cli_cmd, player_2, game_log_file)
+            check_board(base_cli_cmd + get_trusted_cli_subcommand(player_2, mrenclave, 'get-board'), player_2, game_log_file)
 
         except subprocess.CalledProcessError as cpe:
             logging.error(f'Failed to play turn: {cpe.output}')
