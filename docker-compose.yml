@@ -1,0 +1,15 @@
+services:
+  node:
+    image: "${NODE_IMAGE}"
+    command: ./node-solo --dev --rpc-methods unsafe --ws-external --rpc-external --ws-port 9944
+    ports:
+      - "9944:9944"
+
+  worker:
+    image: "${WORKER_IMAGE}"
+    command: sh -c "sleep 30 && ./integritee-service --clean-reset --ws-external -u ws://node -U ws://worker
+      -M worker -T wss://worker -P 2011 -w 2101 -p 9944 -h 4645 run --dev --skip-ra"
+    ports:
+      - "4645:4645"
+      - "2011:2011"
+      - "2101:2101"
