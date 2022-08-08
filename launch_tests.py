@@ -132,19 +132,19 @@ def generate_player_accounts(cli_exec, mrenclave, player_count, ws_addr='127.0.0
 
 def drop_bomb(cli_cmd, player, x, y, log_file):
     cmd = cli_cmd + ['drop-bomb', player, x, y]
-    p = subprocess.run(cmd, stdout=log_file, stderr=subprocess.STDOUT)
+    p = subprocess.run(cmd, stdout=log_file, stderr=subprocess.STDOUT, timeout=60.0)
     p.check_returncode()
 
 
 def drop_stone(cli_cmd, player, direction, x, log_file):
     cmd = cli_cmd + ['drop-stone', player, direction, x]
-    p = subprocess.run(cmd, stdout=log_file, stderr=subprocess.STDOUT)
+    p = subprocess.run(cmd, stdout=log_file, stderr=subprocess.STDOUT, timeout=60.0)
     p.check_returncode()
 
 
 def check_board(cli_cmd, player, log_file):
     cmd = cli_cmd + ['get-board', player]
-    p = subprocess.run(cmd, stdout=log_file, stderr=subprocess.STDOUT)
+    p = subprocess.run(cmd, stdout=log_file, stderr=subprocess.STDOUT, timeout=60.0)
     p.check_returncode()
 
 
