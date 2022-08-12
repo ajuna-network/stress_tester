@@ -1,0 +1,11 @@
+# Build the node binary
+FROM integritee/integritee-dev:0.1.9 as build
+WORKDIR /workspace
+COPY ./node .
+RUN rustup show
+RUN cargo build --release --features skip-ias-check
+
+# Place the node binary in '/ajuna/node'
+FROM integritee/integritee-dev:0.1.9
+WORKDIR /ajuna
+COPY --from=build /workspace/target/release/ajuna-solo /ajuna/node-solo

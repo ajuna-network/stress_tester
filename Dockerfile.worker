@@ -1,0 +1,18 @@
+# Build the worker binary
+FROM integritee/integritee-dev:0.1.9 as build
+RUN git config --global credential.helper store
+WORKDIR /workspace
+COPY ./worker .
+RUN rustup show
+RUN CARGO_NET_GIT_FETCH_WITH_CLI=true SGX_MODE=SW make
+
+# Copy the generated binaries in the proper locations
+FROM integritee/integritee-dev:0.1.9
+WORKDIR /service
+RUN touch spid.txt
+RUN touch key.txt
+COPY ./worker/bin/end.fullchain .
+COPY ./worker/bin/end.rsa .
+COPY --from=build /workspace/bin/integritee-service integritee-service
+COPY --from=build /workspace/bin/enclave.signed.so enclave.signed.so
+COPY --from=build /workspace/bin/integritee-cli integritee-cli
